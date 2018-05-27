@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"html/template"
 	"log"
@@ -125,32 +126,28 @@ func GetSingleMovie(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 	
-	//var data []Movie
+	movies := make([]*Movie, 0)
 
 	store := &MovieStore{
-		Films:	[]*Movie,
+		Films:	movies,
 	}
 
-	movie, err := json.Marshal(movies)
-	if err != nil {
-		log.Println(err)
-	}
+	json.Unmarshal(body, store)
 
-	if err != nil {
-		log.Println(err)
-	}
+	fmt.Println(store)
 
-
-	for _, movie := range allMovies {
+	for _, movie := range store.Films {
 		if int64(movie.ID) == id {
-			data = movie
+			movies[id] = movie
 			break
 		}
 	}
 
-	templ := template.Must(template.ParseFiles("template/index.gohtml"))
+	fmt.Println(movies[id])
+
+	templ := template.Must(template.ParseFiles("template/details.gohtml"))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	templ.Execute(w, data)
+	templ.Execute(w, movies[id])
 }
 
 
