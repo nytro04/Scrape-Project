@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="assets/images/favicon.ico">
+
+    <title>Dashboard Template for Bootstrap</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="assets/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="assets/css/dashboard.css" rel="stylesheet">
+
+    <script src="assets/js/ie-emulation-modes-warning.js"></script>
+
+  </head>
+
+  <body>
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-12 col-md-8 col-md-offset-2">
+          <h1 class="page-header">Movie Details</h1>
+
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Movies</th>
+                  <th>Details</th>  
+                </tr>
+              </thead>
+        <tbody>
+				<tr>
+					<td><strong>ID</strong></td>
+					<td>{{.ID}}</td>
+				</tr>
+				<tr>
+					<td><strong>Title</strong></td>
+				    <td>{{.Title}}</td>
+				</tr>
+				<tr>
+					<td><strong>Duration</strong></td>
+					<td>{{.Duration}}</td>
+				</tr>
+				<tr>
+					<td><strong>Release Date</strong></td>
+					<td>{{.Details.ReleaseDate}}</td>
+				</tr>
+				<tr>
+					<td><strong>Genre</strong></td>
+					<td>{{.Details.Genre}}</td>
+				</tr>
+				<tr>
+					<td><strong>Language</strong></td>
+					<td>{{.Details.Language}}</td>
+				</tr>
+				<tr>
+					<td><strong>ShowTime</strong></td>
+					<td>{{.ShowTime}}</td>
+				</tr>
+				// <tr>
+				// 	<td><strong>Contact Number</strong></td>
+				// 	<td>{{.ContactNumber}}</td>
+				// </tr>
+				// <tr>
+				// 	<td><strong>Number Of Guards</strong></td>
+				// 	<td>{{.NumberOfGuards}}</td>
+				// </tr>
+				// <tr>
+				// 	<td><strong>Location</strong></td>
+				// 	<td>{{.Location}}</td>
+        // </tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+            <td><a class="btn btn-info btn-xs" href="/movies/:id">details</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="assets/js/bootstrap.min.js"></script>
+  
+  </body>
+</html>
