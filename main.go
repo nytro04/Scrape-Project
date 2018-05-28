@@ -145,6 +145,9 @@ func GetSingleMovie(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	router := mux.NewRouter()
+
+	router.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("templates/assets"))))
+
 	router.HandleFunc("/api/v1/movies", GetMovies).Methods("GET")
 	router.HandleFunc("/movies", RenderMovieList).Methods("GET")
 	router.HandleFunc("/movies/{id}", GetSingleMovie).Methods("GET")
@@ -153,4 +156,3 @@ func main() {
 	log.Println("Server started listening on port...")
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
-
