@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"html/template"
 	"log"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"encoding/json"
 	"io/ioutil"
+	"strconv"
 )
 
 type Details struct {
@@ -111,9 +111,15 @@ func RenderMovieList(w http.ResponseWriter, r *http.Request) {
 func GetSingleMovie(w http.ResponseWriter, r *http.Request) {
 	url := "http://localhost:8000/api/v1/movies"
 	res, err := http.Get(url)
+
 	if err != nil {
 		panic(err.Error())
 	}
+
+	body, err := ioutil.ReadAll(res.Body)
+
+	var data []Movie
+	json.Unmarshal(body, &data)
 
 	params := mux.Vars(r)
 	id, err := strconv.ParseInt(params["id"], 10, 64)
@@ -121,44 +127,32 @@ func GetSingleMovie(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Println(err)
-	}
-	
-	movies := make([]*Movie, 0)
-
-	store := &MovieStore{
-		Films:	movies,
-	}
-
-	json.Unmarshal(body, store)
-
-	fmt.Println(store)
-
-	for _, movie := range store.Films {
+	var result Movie
+	for _, movie := range data {
 		if int64(movie.ID) == id {
-			movies[id] = movie
+			result = movie
 			break
 		}
 	}
 
-	fmt.Println(movies[id])
+	fmt.Println(result)
 
 	templ := template.Must(template.ParseFiles("template/details.gohtml"))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	templ.Execute(w, movies[id])
+	templ.Execute(w, result)
 }
 
 
 func main() {
 	router := mux.NewRouter()
+
+	router.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("templates/assets"))))
+
 	router.HandleFunc("/api/v1/movies", GetMovies).Methods("GET")
 	router.HandleFunc("/movies", RenderMovieList).Methods("GET")
-	router.HandleFunc("/movies/:id", GetSingleMovie).Methods("GET")
+	router.HandleFunc("/movies/{id}", GetSingleMovie).Methods("GET")
 
 
 	log.Println("Server started listening on port...")
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
-
