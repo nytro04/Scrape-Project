@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -10,18 +9,20 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/PuerkitoBio/goquery"
 	"encoding/json"
-	"io/ioutil"
 	"strconv"
 )
 
+// Details is a struct which represents the the three unstructured
+//  pieces of data from the Details field of a Movie object.
 type Details struct {
 	ReleaseDate string `json:"release_date"`
 	Genre       string `json:"genre"`
 	Language    string `json:"language"`
 }
 
+// Movie represents the metadata for one Movie.
 type Movie struct {
-	ID		int	`json:"id"`
+	ID		 int	`json:"id"`
 	Title    string `json:"title"`
 	Duration string `json:"duration"`
 	Details  Details `json:"details"`
@@ -30,13 +31,10 @@ type Movie struct {
 	Votes    string `json:"votes"`
 }
 
-type MovieStore struct {
-	Films []*Movie
-}
-
-var movies []Movie
-
-func GetMovies(w http.ResponseWriter, r *http.Request) {
+// getMovies is a common utility API which returns
+// all available movies compatible with the source.
+func getMovies() []Movie {
+	var movies []Movie
 	var source = "https://silverbirdcinemas.com/cinema/accra/"
 
 	// Request the HTML page.
@@ -78,81 +76,99 @@ func GetMovies(w http.ResponseWriter, r *http.Request) {
 
 		movies = append(movies, movie)
 	})
+	return movies
+}
 
+// getMovie will use the getMovies API in
+// order to retrieve a single Movie object.
+func getMovie(id int) Movie {
+	movies := getMovies()
+	var r Movie
+	for _, movie := range movies {
+		if movie.ID == id {
+			r = movie
+		}
+	}
+	return r
+}
+
+// GetMovies is a handler for the http mux.
+// It will get a JSON payload containing
+// all compatible Movie objects.
+func GetMovies(w http.ResponseWriter, r *http.Request) {
+	// Get the movies.
+	movies := getMovies()
 	// Convert the desired data into a json format.
 	payload, err := json.Marshal(movies)
 	if err != nil {
 		log.Println(err)
 	}
-
 	// Return the payload.
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(payload)
 }
 
-func RenderMovieList(w http.ResponseWriter, r *http.Request) {
-	url := "http://localhost:8000/api/v1/movies"
-	res, err := http.Get(url)
-
+// GetMovie is a handler for the http mux.
+// It will get a single JSON payload containing
+// one specified compatible Movie object.
+func GetMovie(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id, err := strconv.ParseInt(params["id"], 10, 64)
 	if err != nil {
-		panic(err.Error())
+		log.Println(err)
 	}
+	movies := getMovies()
+	var movie Movie
+	for _, m := range movies {
+		if string(m.ID) == string(id) {
+			movie = m
+		}
+	}
+	// Convert the desired data into a json format.
+	payload, err := json.Marshal(movie)
+	if err != nil {
+		log.Println(err)
+	}
+	// Return the payload.
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(payload)
+}
 
-	body, err := ioutil.ReadAll(res.Body)
-
-	var data []Movie
-	json.Unmarshal(body, &data)
-
+// RenderMovies will render the complete set of []Movies.
+func RenderMovies(w http.ResponseWriter, r *http.Request) {
+	data := getMovies()
 	templ := template.Must(template.ParseFiles("template/index.gohtml"))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	templ.Execute(w, data)
 }
 
-func GetSingleMovie(w http.ResponseWriter, r *http.Request) {
-	url := "http://localhost:8000/api/v1/movies"
-	res, err := http.Get(url)
-
-	if err != nil {
-		panic(err.Error())
-	}
-
-	body, err := ioutil.ReadAll(res.Body)
-
-	var data []Movie
-	json.Unmarshal(body, &data)
-
+// RenderMovie will render one Movies.
+func RenderMovie(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id, err := strconv.ParseInt(params["id"], 10, 64)
 	if err != nil {
 		log.Println(err)
 	}
 
-	var result Movie
-	for _, movie := range data {
-		if int64(movie.ID) == id {
-			result = movie
-			break
-		}
-	}
-
-	fmt.Println(result)
+	movie := getMovie(int(id))
 
 	templ := template.Must(template.ParseFiles("template/details.gohtml"))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	templ.Execute(w, result)
+	templ.Execute(w, movie)
 }
 
-
+// main is the program entry point.
 func main() {
 	router := mux.NewRouter()
 
 	router.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("templates/assets"))))
 
 	router.HandleFunc("/api/v1/movies", GetMovies).Methods("GET")
-	router.HandleFunc("/movies", RenderMovieList).Methods("GET")
-	router.HandleFunc("/movies/{id}", GetSingleMovie).Methods("GET")
+	router.HandleFunc("/api/v1/movies/{id}", GetMovie).Methods("GET")
+	router.HandleFunc("/movies", RenderMovies).Methods("GET")
+	router.HandleFunc("/movies/{id}", RenderMovie).Methods("GET")
 
 
-	log.Println("Server started listening on port...")
+	log.Println("Server started listening on port 8000...")
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
