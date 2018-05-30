@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"html/template"
 	"log"
 	"net/http"
@@ -33,19 +34,27 @@ type Movie struct {
 
 // getMovies is a common utility API which returns
 // all available movies compatible with the source.
-func getMovies() []Movie {
+func getMovies(ctx context.Context) ([]Movie, error) {
 	var movies []Movie
 	var source = "https://silverbirdcinemas.com/cinema/accra/"
 
 	// Request the HTML page.
-	res, err := http.Get(source)
+	req, err := http.NewRequest("GET", source, nil)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
+
+	req = req.WithContext(ctx)
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Println(err)
+	}
+
 	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
-	}
+	// if res.StatusCode != 200 {
+	// 	log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
+	// }
 	// Load the HTML document
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
@@ -76,20 +85,23 @@ func getMovies() []Movie {
 
 		movies = append(movies, movie)
 	})
-	return movies
+	return movies, nil
 }
 
 // getMovie will use the getMovies API in
 // order to retrieve a single Movie object.
-func getMovie(id int) Movie {
-	movies := getMovies()
+func getMovie(req *http.Request, id int) (Movie, error) {
+	movies, err := getMovies(req.Context())
+	if err != nil {
+		log.Println(err)
+	}
 	var r Movie
 	for _, movie := range movies {
 		if movie.ID == id {
 			r = movie
 		}
 	}
-	return r
+	return r, nil 
 }
 
 // GetMovies is a handler for the http mux.
@@ -97,12 +109,16 @@ func getMovie(id int) Movie {
 // all compatible Movie objects.
 func GetMovies(w http.ResponseWriter, r *http.Request) {
 	// Get the movies.
-	movies := getMovies()
+	movies, err := getMovies(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 	// Convert the desired data into a json format.
 	payload, err := json.Marshal(movies)
 	if err != nil {
-		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+
 	// Return the payload.
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(payload)
@@ -115,9 +131,13 @@ func GetMovie(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id, err := strconv.ParseInt(params["id"], 10, 64)
 	if err != nil {
-		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	movies := getMovies()
+
+	movies, err := getMovies(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 	var movie Movie
 	for _, m := range movies {
 		if string(m.ID) == string(id) {
@@ -127,8 +147,9 @@ func GetMovie(w http.ResponseWriter, r *http.Request) {
 	// Convert the desired data into a json format.
 	payload, err := json.Marshal(movie)
 	if err != nil {
-		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+
 	// Return the payload.
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(payload)
@@ -136,7 +157,10 @@ func GetMovie(w http.ResponseWriter, r *http.Request) {
 
 // RenderMovies will render the complete set of []Movies.
 func RenderMovies(w http.ResponseWriter, r *http.Request) {
-	data := getMovies()
+	data, err := getMovies(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 	templ := template.Must(template.ParseFiles("template/index.gohtml"))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	templ.Execute(w, data)
@@ -147,10 +171,13 @@ func RenderMovie(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id, err := strconv.ParseInt(params["id"], 10, 64)
 	if err != nil {
-		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	movie := getMovie(int(id))
+	movie, err := getMovie(r, int(id))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 
 	templ := template.Must(template.ParseFiles("template/details.gohtml"))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
